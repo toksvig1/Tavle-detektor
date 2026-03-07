@@ -1,18 +1,15 @@
 # De nødvendige bibloteker bliver importeret her.
 import numpy as np # Til matematik
 import sys # Systemet
-import matplotlib # 
-import random
+import matplotlib # Til grafer
+import random # Til weights og bias
 
 # Parametre ################################################
 
-HIDDEN_LAYERS = 0
-INPUT_NODES = 1
+HIDDEN_LAYERS = 4
+INPUT_NODES = 2
 HIDDEN_LAYERNODES = 20
-OUTPUT_NODES = 1
-
-
-
+OUTPUT_NODES = 10
 
 # Parametre ################################################
 
@@ -38,9 +35,23 @@ class network:
                 self.hidden_layers.append(layer(self.hidden_layernodes, "hidden_layer"+str(x+1),self.input_nodes))
             else:
                 self.hidden_layers.append(layer(self.hidden_layernodes, "hidden_layer"+str(x+1),self.hidden_layernodes))
-        self.output_layer.append(layer(self.output_nodes, "output_layer",self.hidden_layernodes))
+        if self.hidden_layersamt > 0:
+            self.output_layer.append(layer(self.output_nodes, "output_layer",self.hidden_layernodes))
+        else:
+            self.output_layer.append(layer(self.output_nodes, "output_layer",self.input_nodes))
 
-
+    def forward_propagation(self,inputs):
+        self.input_layer[0].layer_propagation(inputs)
+        for x in self.hidden_layers:
+            if self.hidden_layers.index(x) == 0:
+                x.layer_propagation(inputs)
+            else:
+                indx = self.hidden_layers.index(x)
+                tmpinputs = self.hidden_layers[indx-1].get_all_outputs()
+                print(tmpinputs)
+                x.layer_propagation(tmpinputs)
+        tmpinputs = self.hidden_layers[-1].get_all_outputs()
+        self.output_layer[0].layer_propagation(tmpinputs)
 
 class layer:
     def __init__(self,layer_nodesamt,layer_name,weight_amt):
@@ -58,25 +69,50 @@ class layer:
             self.layer_nodes.append(node(weight_array))
         #print(self.layer_nodes)
 
+    def layer_propagation(self,inputs):
+        print(self.layer_name)
+        if self.layer_name != "input_layer":
+            for x in self.layer_nodes:
+                x.output_calculate(inputs)
+        else:
+            for x in self.layer_nodes:
+                indx = self.layer_nodes.index(x)
+                x.inputnode_output(inputs[indx])
+
+
+    def get_all_outputs(self):
+        output_to_input = []
+        for x in self.layer_nodes:
+            output_to_input.append(x.o)
+        return output_to_input
 
 class node:
     def __init__(self,weights):
         # , inputs, weights, bias
         #self.i = inputs
         self.w = weights
-        print(weights)
+        print("Weights: "+ str(weights))
         self.b = random.uniform(-4,4)
+        print("Bias: "+ str(self.b))
 
 
-    def NCalc(self):
-        output = self.i[0]*self.w[0]+self.i[1]*self.w[1]+self.i[2]*self.w[2]+ self.b
+    def output_calculate(self,inputs):
+        output = 0
+        for x in inputs:
+            indx = inputs.index(x)
+            output = output + (x*self.w[indx])
+        output = output + self.b
+        #output = self.i[0]*self.w[0]+self.i[1]*self.w[1]+self.i[2]*self.w[2]+ self.b
         self.o = output
+        print("Node output: "+str(self.o))
 
-
+    def inputnode_output(self,input):
+        self.o = input
+        print("Input node input: "+str(self.o))
 
 def create_network(hidden_layers, input_nodes, hidden_layernodes, output_nodes):
-    the_network = network(hidden_layers, input_nodes, hidden_layernodes, output_nodes)
-
+    return network(hidden_layers, input_nodes, hidden_layernodes, output_nodes)
+    
 
 
 
@@ -93,8 +129,8 @@ def main():
     #neuron = node(inputs,weights,bias)
     #neuron.NCalc()
     #print(neuron.o)
-    create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
-
+    the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
+    the_network.forward_propagation([1.2,0.8])
 
 
 
