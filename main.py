@@ -11,7 +11,7 @@ np.random.seed(0)
 
 HIDDEN_LAYERS = 1
 INPUT_NODES = 2
-HIDDEN_LAYERNODES = 2
+HIDDEN_LAYERNODES = 100
 OUTPUT_NODES = 1
 
 # Parametre ################################################
@@ -46,7 +46,7 @@ class network:
         for x in self.hidden_layers:
             inputs = x.layer_propagationnp(inputs)
         self.result = self.output_layer[0].layer_propagationnp(inputs)
-        print(self.result)
+        print("Output: "+ str(self.result))
 
 
 
@@ -178,7 +178,7 @@ def main():
     weights = [3.1,2.1,8.7]
     bias = 3
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
-    the_network.forward_propagationnp([1.2,0.8])
+    the_network.forward_propagationnp([[1.2,0.8],[1.4,0.1],[0.6,0.2],[1.2,0.8]])
     print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
 
