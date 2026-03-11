@@ -1,18 +1,20 @@
 # De nødvendige bibloteker bliver importeret her.
 import numpy as np # Til matematik
 import sys # Systemet
-import matplotlib # Til grafer
+import matplotlib
+import matplotlib.pyplot as plt # Til grafer
 import random # Til weights og bias
 import time # Til at finde ud af hvor lang tid programmet kørte
 start_time = time.time()
-np.random.seed(0)
+#np.random.seed(9150)
 
 # Parametre ################################################
 
-HIDDEN_LAYERS = 1
-INPUT_NODES = 2
-HIDDEN_LAYERNODES = 100
-OUTPUT_NODES = 1
+HIDDEN_LAYERS = 5
+INPUT_NODES = 3
+HIDDEN_LAYERNODES = 1000
+OUTPUT_NODES = 8
+X = [[-1.2,-0.8,-2.4],[-1.4,-0.1,-1.7],[-0.6,-0.2,-0.7],[-1.2,-0.8,-2.6]]
 
 # Parametre ################################################
 
@@ -44,14 +46,25 @@ class network:
 
     def forward_propagationnp(self,inputs):
         for x in self.hidden_layers:
-            inputs = x.layer_propagationnp(inputs)
+            inputs = np.maximum(0,x.layer_propagationnp(inputs))
+            #print("inputs: "+str(inputs))
         self.result = self.output_layer[0].layer_propagationnp(inputs)
+        self.result = self.softmax(self.result)
         print("Output: "+ str(self.result))
+        #xy = np.array(self.result).flatten()
+        #print(len(xy))
+        #xp = np.array(range(len(xy)))
+        #plt.plot(xp,xy)
+        #plt.show()
+        
 
 
 
 
-
+    def softmax(self,out):
+        e_x = np.exp(out-np.max(out))
+        print(e_x)
+        return e_x / e_x.sum()
 
 
     # SLETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
@@ -87,12 +100,12 @@ class layer:
         #self.weight_amt = weight_amt ,weight_amt
         self.layer_nodes = []
 
-        self.weights = np.random.rand(layer_nodesamt,layer_name)
+        self.weights = np.random.randn(layer_nodesamt,layer_name)
         self.biases = np.zeros((1, layer_name))
-        print("WEIGHTS:")
-        print(self.weights)
-        print("BIASES")
-        print(self.biases)
+        #print("WEIGHTS:")
+        #print(self.weights)
+        #print("BIASES")
+        #print(self.biases)
 
 
         #self.create_nodes()
@@ -178,8 +191,10 @@ def main():
     weights = [3.1,2.1,8.7]
     bias = 3
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
-    the_network.forward_propagationnp([[1.2,0.8],[1.4,0.1],[0.6,0.2],[1.2,0.8]])
+    the_network.forward_propagationnp(X)
+    print("")
     print("Process finished --- %s seconds ---" % (time.time() - start_time))
+    print("Can run at %s fps." % (1/(time.time() - start_time)))
 
 
 # Programmet kan kun køres som script, og kan ikke importeres i andre scripts.
