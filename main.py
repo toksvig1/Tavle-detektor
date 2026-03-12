@@ -10,10 +10,10 @@ start_time = time.time()
 
 # Parametre ################################################
 
-HIDDEN_LAYERS = 5
+HIDDEN_LAYERS = 1
 INPUT_NODES = 3
-HIDDEN_LAYERNODES = 1000
-OUTPUT_NODES = 8
+HIDDEN_LAYERNODES = 10
+OUTPUT_NODES = 3
 X = [[-1.2,-0.8,-2.4],[-1.4,-0.1,-1.7],[-0.6,-0.2,-0.7],[-1.2,-0.8,-2.6]]
 
 # Parametre ################################################
@@ -62,9 +62,11 @@ class network:
 
 
     def softmax(self,out):
-        e_x = np.exp(out-np.max(out))
-        print(e_x)
-        return e_x / e_x.sum()
+        #print("Out:" + str(out))
+
+        e_x = np.exp(out-np.max(out, axis=1,keepdims=True))
+        #print("E_x: "+ str(e_x))
+        return e_x / np.sum(e_x, axis=1, keepdims=True)
 
 
     # SLETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
