@@ -5,6 +5,8 @@ import matplotlib
 import matplotlib.pyplot as plt # Til grafer
 import random # Til weights og bias
 import time # Til at finde ud af hvor lang tid programmet kørte
+import math # Til Eulers tal
+
 start_time = time.time()
 #np.random.seed(9150)
 
@@ -57,15 +59,39 @@ class network:
         #plt.plot(xp,xy)
         #plt.show()
         
+    def temp(self,inputs):
+        for x in self.hidden_layers:
+            inputs = self.maxim(x.layer_propagationnp(inputs))
+
+        self.resultt = self.output_layer[0].layer_propagationnp(inputs)
 
 
+    def maxim(self,inputs):
+        rt = []
+        for x in inputs:
+            rtt = []
+            for y in x:
+                rtt.append(max(0,y))
+            rt.append(rtt)
+        return rt
 
+    def softmax_maxim(self,out):
+        ra = []
+        for x in out:
+            biggest_val = max(x)
+            rta = list(map(lambda y:y-biggest_val,x))
+            ra.append(rta)
+        return ra
 
     def softmax(self,out):
-        #print("Out:" + str(out))
+        overflow_proc = self.softmax_maxim(out)
+        e_xtemp = list(map(lambda nestedlist: list(map(lambda x: math.exp(x),nestedlist)),overflow_proc))
 
         e_x = np.exp(out-np.max(out, axis=1,keepdims=True))
-        #print("E_x: "+ str(e_x))
+
+        e_xsum = list(map(lambda x: sum(x),e_xtemp))
+        print(np.sum(e_x, axis=1, keepdims=True))
+
         return e_x / np.sum(e_x, axis=1, keepdims=True)
 
 
