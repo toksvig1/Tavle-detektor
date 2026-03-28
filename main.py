@@ -6,13 +6,14 @@ import matplotlib.pyplot as plt # Til grafer
 import random # Til weights og bias
 import time # Til at finde ud af hvor lang tid programmet kørte
 import math # Til Eulers tal
+import pprint
 
 start_time = time.time()
 #np.random.seed(9150)
 
 # Parametre ################################################
 
-HIDDEN_LAYERS = 1
+HIDDEN_LAYERS = 2
 INPUT_NODES = 3
 HIDDEN_LAYERNODES = 10
 OUTPUT_NODES = 3
@@ -48,7 +49,16 @@ class network:
 
     def forward_propagationnp(self,inputs):
         for x in self.hidden_layers:
-            inputs = np.maximum(0,x.layer_propagationnp(inputs))
+            #print("inputbf: "+str(self.maxim(x.layer_propagationnp(inputs))))
+            #print("inputaf: "+str(np.maximum(0,x.layer_propagationnp(inputs))))
+
+
+
+            #inputs = np.maximum(0,x.layer_propagationnp(inputs))
+            inputs = self.maxim(x.layer_propagationnp(inputs))
+
+
+
             #print("inputs: "+str(inputs))
         self.result = self.output_layer[0].layer_propagationnp(inputs)
         self.result = self.softmax(self.result)
@@ -84,15 +94,23 @@ class network:
         return ra
 
     def softmax(self,out):
+        print(out)
         overflow_proc = self.softmax_maxim(out)
         e_xtemp = list(map(lambda nestedlist: list(map(lambda x: math.exp(x),nestedlist)),overflow_proc))
 
         e_x = np.exp(out-np.max(out, axis=1,keepdims=True))
 
         e_xsum = list(map(lambda x: sum(x),e_xtemp))
-        print(np.sum(e_x, axis=1, keepdims=True))
+        zipe_x = list(zip(e_xtemp,e_xsum))
+        
+        
+        e_xtempsum = list(map(lambda pair: list(map(lambda val: val/pair[1],pair[0])), zipe_x))
+        #print("AAAA"+str(e_xtempsum))
 
-        return e_x / np.sum(e_x, axis=1, keepdims=True)
+        #print(zipe_x)
+        #print("ASD"+str(e_x/np.sum(e_x, axis=1, keepdims=True)))
+        #print("sammen: "+str(e_xtempsum))
+        return e_xtempsum
 
 
     # SLETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
@@ -140,7 +158,18 @@ class layer:
 
 
     def layer_propagationnp(self, inputs):
-        self.layer_output = np.dot(inputs, self.weights) + self.biases
+        #pprint.pp("inputs: "+str(inputs))
+        #pprint.pp("weights: "+str(self.weights))
+        weights_transposed = list(map(list, zip(*self.weights)))
+        #pprint.pp("Weights transposed: "+str(list(map(list, zip(*self.weights)))))
+        #pprint.pp("res: "+str(np.dot(inputs, self.weights)))
+        #pprint.pp("weight : "+str(self.weights))
+        #pprint.pp("weighwoit: "+str(weights_transposed))
+        
+        output = [[sum(x*y+self.biases[0][weights_transposed.index(a_row)] for x,y in zip(a_row, b_row)) for a_row in weights_transposed] for b_row in inputs]
+        #pprint.pp("Test: "+str(output))
+        self.layer_output = output
+        #self.layer_output = np.dot(inputs, self.weights) + self.biases
         return self.layer_output
 
 
