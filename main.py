@@ -146,8 +146,19 @@ class layer:
         #self.weight_amt = weight_amt ,weight_amt
         self.layer_nodes = []
 
-        self.weights = np.random.randn(layer_nodesamt,layer_name)
-        self.biases = np.zeros((1, layer_name))
+        #self.weights = np.random.randn(layer_nodesamt,layer_name)
+        #print("----------------------")
+        #print(layer_nodesamt)
+        #print(layer_name)
+        #print(self.weights)
+        list_weights = [[random.uniform(-1,1) for _ in range(layer_name)] for _ in range(layer_nodesamt)]
+        #pprint.pp(list_weights)
+        #print("----------------------")
+        self.weights = list_weights
+        #self.biases = np.zeros((1, layer_name))
+        biasespre = []
+        biasespre.append([0 for x in range(layer_name)])
+        self.biases = biasespre
         #print("WEIGHTS:")
         #print(self.weights)
         #print("BIASES")
