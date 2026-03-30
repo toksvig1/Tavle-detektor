@@ -47,7 +47,7 @@ class network:
             self.output_layer.append(layer(self.input_nodes,self.output_nodes))
 
 
-    def forward_propagationnp(self,inputs):
+    def forward_propagationnp(self,inputs,prediciton):
         for x in self.hidden_layers:
             #print("inputbf: "+str(self.maxim(x.layer_propagationnp(inputs))))
             #print("inputaf: "+str(np.maximum(0,x.layer_propagationnp(inputs))))
@@ -62,7 +62,11 @@ class network:
             #print("inputs: "+str(inputs))
         self.result = self.output_layer[0].layer_propagationnp(inputs)
         self.result = self.softmax(self.result)
-        print("Output: "+ str(self.result))
+        print("Output: "+ str(self.result)) 
+        zipped_list = list(zip(self.result, prediciton))
+        loss_list = list(map(lambda x: -math.log(x[0][x[1]]),zipped_list))
+        loss_mean = sum(loss_list)/len(loss_list)
+        print("Loss: "+str(loss_mean))
         #xy = np.array(self.result).flatten()
         #print(len(xy))
         #xp = np.array(range(len(xy)))
@@ -258,8 +262,9 @@ def main():
     inputs = [1.2,5.1,2.1]
     weights = [3.1,2.1,8.7]
     bias = 3
+    prediction = [0,1,2,0] 
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
-    the_network.forward_propagationnp(X)
+    the_network.forward_propagationnp(X,prediction)
     print("")
     print("Process finished --- %s seconds ---" % (time.time() - start_time))
     print("Can run at %s fps." % (1/(time.time() - start_time)))
