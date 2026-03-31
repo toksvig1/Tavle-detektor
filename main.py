@@ -7,6 +7,7 @@ import random # Til weights og bias
 import time # Til at finde ud af hvor lang tid programmet kørte
 import math # Til Eulers tal
 import pprint
+import json
 
 start_time = time.time()
 #np.random.seed(9150)
@@ -35,6 +36,57 @@ class network:
         self.output_layer = []
         self.create_layersnp()
         
+
+    def load_file(self, load_file):
+        with open(load_file, 'r') as file:
+            data = json.load(file)
+            self.hidden_layersamt = data['HIDDEN_LAYERS']
+            self.input_nodes = data['INPUT_NODES']
+            self.output_nodes = data['OUTPUT_NODES']
+            self.hidden_layernodes = data['HIDDEN_LAYER_NODES']
+            self.hidden_layers = []
+            self.output_layer = []
+            for x in range(self.hidden_layersamt):
+                if x == 0:
+                    self.hidden_layers.append(self.load_layer(self.input_nodes, self.hidden_layernodes))
+                    self.hidden_layers[x].weights = data['HIDDEN_LAYER_WEIGHTS_'+str(x)]
+                    self.hidden_layers[x].biases = data['HIDDEN_LAYER_BIAS_'+str(x)]
+                else:
+                    self.hidden_layers.append(self.load_layer(self.hidden_layernodes,self.hidden_layernodes))
+                    self.hidden_layers[x].weights = data['HIDDEN_LAYER_WEIGHTS_'+str(x)]
+                    self.hidden_layers[x].biases = data['HIDDEN_LAYER_BIAS_'+str(x)]
+            if self.hidden_layersamt > 0:
+                 self.output_layer.append(self.load_layer(self.hidden_layernodes, self.output_nodes))
+                 self.output_layer[0].weights = data['OUTPUT_LAYER_WEIGHTS']
+                 self.output_layer[0].biases = data['OUTPUT_LAYER_BIASES']
+
+            else:
+                 self.output_layer.append(self.load_layer(self.input_nodes, self.output_nodes))
+                 self.output_layer[0].weights = data['OUTPUT_LAYER_WEIGHTS']
+                 self.output_layer[0].biases = data['OUTPUT_LAYER_BIASES']
+                
+
+
+    def save_network(self):
+        save_dict = {}
+        save_dict['HIDDEN_LAYERS'] = self.hidden_layersamt
+        save_dict['INPUT_NODES'] = self.input_nodes
+        save_dict['OUTPUT_NODES'] = self.output_nodes
+        save_dict['HIDDEN_LAYER_NODES'] = self.hidden_layernodes
+
+        for x in self.hidden_layers:
+            save_dict['HIDDEN_LAYER_WEIGHTS_'+str(self.hidden_layers.index(x))] = x.weights
+            save_dict['HIDDEN_LAYER_BIAS_'+str(self.hidden_layers.index(x))] = x.biases
+
+        save_dict['OUTPUT_LAYER_WEIGHTS'] = self.output_layer[0].weights
+        save_dict['OUTPUT_LAYER_BIASES'] = self.output_layer[0].biases
+        with open('network.json','w') as outfile:
+            json.dump(save_dict, outfile)
+
+
+    def load_layer(self, node_input, node_output):
+        return layer(node_input, node_output)
+
     def create_layersnp(self):
         for x in range(self.hidden_layersamt):
             if x == 0:
@@ -264,7 +316,9 @@ def main():
     bias = 3
     prediction = [0,1,2,0] 
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
+    the_network.load_file('network.json')
     the_network.forward_propagationnp(X,prediction)
+    #the_network.save_network()
     print("")
     print("Process finished --- %s seconds ---" % (time.time() - start_time))
     print("Can run at %s fps." % (1/(time.time() - start_time)))
