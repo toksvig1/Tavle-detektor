@@ -125,6 +125,61 @@ class network:
         #plt.plot(xp,xy)
         #plt.show()
         
+
+    def adam_optimization(self, softmax_output, skalar, inputs):
+        parameters = {}
+        for x in self.hidden_layers:
+            node_weight_dict = x.weights
+            node_bias_dict = x.biases
+            parameters["dW"+str(self.hidden_layers.index(x)+1)] = node_weight_dict
+            parameters["db"+str(self.hidden_layers.index(x)+1)] = node_bias_dict
+        node_weight_dict = self.output_layer[0].weights
+        node_bias_dict = self.output_layer[0].biases
+        parameters["dW"+str(len(self.hidden_layers)+1)] = node_weight_dict
+        parameters["db"+str(len(self.hidden_layers)+1)] = node_bias_dict
+        G = self.batch_gradient(softmax_output, skalar, inputs)
+        v, s = self.adam_initialization(parameters)
+        
+        #self.adam_update_parameters(v,s)
+        
+
+    def adam_update_parameters(self, parameters, grads, m, v, t, learning_rate = 0.01, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8):
+        
+        
+        
+        
+        m = beta1*m + (1-beta1)*grads
+        v = beta2*v + (1-beta2)*grads**2
+
+        m_corrected = m/(1-beta1**t)
+        v_corrected = v/(1-beta2**t)
+
+        parameters = parameters-learning_rate*m_corrected / (v_corrected**(1/2)+epsilon)
+
+        return parameters, m, v
+
+    def batch_gradient(self, softmax_output, skalar, inputs):
+
+        
+        softmax_skalar_zip = list(zip(softmax_output,skalar))
+        gradient_logits = list(map(lambda x: list(map(lambda y: y-1 if x[0].index(y) == x[1] else y, x[0])),softmax_skalar_zip))
+        gradient_weights_zip = list(zip(inputs, gradient_logits))
+        gradient_weights = [[[x * y for y in t[1]] for x in t[0]] for t in gradient_weights_zip]
+        
+        print(gradient_weights)
+        return gradient_weights
+
+    def adam_initialization(self, parameters):
+        dict_len = len(parameters) // 2
+        v = {}
+        s = {}
+
+        for i in range(dict_len):
+            s['dW'+str(i+1)] = list(map(lambda x: list(map(lambda xx: 0, x)), parameters['dW'+ str(i+1)]))
+            s['db'+str(i+1)] = list(map(lambda x: list(map(lambda xx: 0,x)), parameters['db'+ str(i+1)]))
+        v = s.copy()
+        return v, s
+
     def temp(self,inputs):
         for x in self.hidden_layers:
             inputs = self.maxim(x.layer_propagationnp(inputs))
@@ -166,6 +221,7 @@ class network:
         #print(zipe_x)
         #print("ASD"+str(e_x/np.sum(e_x, axis=1, keepdims=True)))
         #print("sammen: "+str(e_xtempsum))
+        self.softmax_result = e_xtempsum
         return e_xtempsum
 
 
@@ -311,13 +367,11 @@ def main():
     print("Python version:", sys.version)
     print("numpy version:", np.__version__)
     print("Matplotlib version:", matplotlib.__version__)
-    inputs = [1.2,5.1,2.1]
-    weights = [3.1,2.1,8.7]
-    bias = 3
     prediction = [0,1,2,0] 
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
     the_network.load_file('network.json')
     the_network.forward_propagationnp(X,prediction)
+    the_network.adam_optimization(the_network.softmax_result, prediction,X)
     #the_network.save_network()
     print("")
     print("Process finished --- %s seconds ---" % (time.time() - start_time))
