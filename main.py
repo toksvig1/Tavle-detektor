@@ -32,6 +32,7 @@ class network:
         self.hidden_layernodes = hidden_layernodes
         self.output_nodes = output_nodes
         self.hidden_layers = []
+        self.layer_results_RELU = []
         self.input_layer = []
         self.output_layer = []
         self.create_layersnp()
@@ -108,7 +109,7 @@ class network:
 
             #inputs = np.maximum(0,x.layer_propagationnp(inputs))
             inputs = self.maxim(x.layer_propagationnp(inputs))
-
+            self.layer_results_RELU.append(inputs)
 
 
             #print("inputs: "+str(inputs))
@@ -163,11 +164,52 @@ class network:
         
         softmax_skalar_zip = list(zip(softmax_output,skalar))
         gradient_logits = list(map(lambda x: list(map(lambda y: y-1 if x[0].index(y) == x[1] else y, x[0])),softmax_skalar_zip))
-        gradient_weights_zip = list(zip(inputs, gradient_logits))
+        gradient_weights_zip = list(zip(self.layer_results_RELU[-1], gradient_logits))
         gradient_weights = [[[x * y for y in t[1]] for x in t[0]] for t in gradient_weights_zip]
+        self.output_bias_gradient = gradient_logits
+        self.output_weight_bias = gradient_weights
+
+        #pprint.pp(gradient_logits)
+        #pprint.pp("hidden out: "+str(self.layer_results_RELU[-1]))
+        #pprint.pp("weights output: "+str(self.output_layer[0].weights))
+        #pprint.pp("weights transposed: "+str([list(row) for row in zip(*self.output_layer[0].weights)]))
+        #pprint.pp("resiutl: "+str(len(gradient_logits)))
+        #pprint.pp("zipped : "+str(gradient_weights_zip))
+        self.previous_error = gradient_logits
+        self.hidden_layer_weight_gradients = []
+        self.hidden_layer_bias_gradients = []
+
+        #pprint.pp("hidden weights: "+str(self.output_layer[0].weights))
+        #pprint.pp("rwererewrew: "+str(gradient_logits))
         
-        print(gradient_weights)
-        return gradient_weights
+        multiplied_weights = []
+        for x in gradient_logits:
+            sum_list = []
+            for y in self.output_layer[0].weights:
+                the_sum = 0
+                for i in range(len(y)):
+                    the_sum += y[i]*x[i]
+                sum_list.append(the_sum)
+            multiplied_weights.append(sum_list)
+        pprint.pp("multi: "+str(multiplied_weights))
+        # måske ReLU
+        # gang med input til sidste hidden layer
+        pprint.pp("inouts : "+str(self.hidden_layers[-1].layer_inputs))
+        hidden_layer_one_weights = []
+        for x in multiplied_weights:
+            nested_list = []
+            for b in x:
+                for y in self.hidden_layers[-1].layer_inputs[multiplied_weights.index(x)]:
+                    nested_list.append(b*y)
+                hidden_layer_one_weights.append(nested_list)
+                print("len : "+str(len(nested_list)))
+        #pprint.pp("math: "+str(hidden_layer_one_weights))
+
+        for x in self.hidden_layers:
+            #pprint.pp("hidden : "+str(len(x.weights)))
+            pass
+
+        return gradient_logits
 
     def adam_initialization(self, parameters):
         dict_len = len(parameters) // 2
@@ -281,6 +323,7 @@ class layer:
 
 
     def layer_propagationnp(self, inputs):
+        self.layer_inputs = inputs
         #pprint.pp("inputs: "+str(inputs))
         #pprint.pp("weights: "+str(self.weights))
         weights_transposed = list(map(list, zip(*self.weights)))
