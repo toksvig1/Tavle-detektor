@@ -18,8 +18,8 @@ HIDDEN_LAYERS = 2
 INPUT_NODES = 3
 HIDDEN_LAYERNODES = 10
 OUTPUT_NODES = 3
-X = [[-1.2,-0.8,-2.4],[-1.4,-0.1,-1.7],[-0.6,-0.2,-0.7],[-1.2,-0.8,-2.6]]
-
+#X = [[-1.2,-0.8,-2.4],[-1.4,-0.1,-1.7],[-0.6,-0.2,-0.7],[-1.2,-0.8,-2.6]]
+X = [[-1.2,-0.8,2.5],[-3.2,-2.8,1.5]]
 # Parametre ################################################
 
 
@@ -138,28 +138,75 @@ class network:
         node_bias_dict = self.output_layer[0].biases
         parameters["dW"+str(len(self.hidden_layers)+1)] = node_weight_dict
         parameters["db"+str(len(self.hidden_layers)+1)] = node_bias_dict
-        G = self.batch_gradient(softmax_output, skalar, inputs)
-        v, s = self.adam_initialization(parameters)
+        w,b = self.batch_gradient(softmax_output, skalar)
+        m, v = self.adam_initialization(parameters)
+        for x in w[0]:
+            w[0][w[0].index(x)] = [list(row) for row in zip(*x)]
+
+    
         
-        #self.adam_update_parameters(v,s)
+        
+        w[0] = [list(row) for row in zip(*w[0])]
+
+        self.adam_update_parameters(parameters,w,b,m,v)
         
 
-    def adam_update_parameters(self, parameters, grads, m, v, t, learning_rate = 0.01, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8):
+    def adam_update_parameters(self, parameters, w,b, m, v, t=1, learning_rate = 0.01, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8):
         
-        
-        
-        
-        m = beta1*m + (1-beta1)*grads
-        v = beta2*v + (1-beta2)*grads**2
+        # For w, så er der 3 lister, hver liste har lister som tilhører hver deres batch: [[[b1],[b2],[b3],],[[b1],[b2],[b3]],[[b1],[b2],[b3]]]
+        # bias er på samme måde, alle første lag er groupet sammen og resten er også groupet sammen.
+        # de overstående går fra output til input, men selvfølgelig ikke inkluderende input.
 
-        m_corrected = m/(1-beta1**t)
-        v_corrected = v/(1-beta2**t)
+        # m og v er bare dictionaries med hver weight og bias grupper for hver node er i deres egen liste.
+        # de går fra input til output.
+        # alt det samme tæller for parameters.
 
-        parameters = parameters-learning_rate*m_corrected / (v_corrected**(1/2)+epsilon)
+        # ----- I dette tilfælde bliver der ikke tage summen eller gennemsnittet af gradientsne.
+
+        pprint.pp("parameters: "+str(parameters))
+        pprint.pp("w: "+str(w))
+        pprint.pp("b: "+str(b))
+        pprint.pp("m: "+str(m))
+        pprint.pp("v: "+str(v))
+        
+        # der regnes først for bias.
+        # output til input
+        for data_set in b:
+            data_set_index = (len(b)-b.index(data_set))
+            for batch in data_set:
+                t = 1
+                for data_point in batch:
+                    corresponding_m = m['db'+str(data_set_index)][batch.index(data_point)]
+                    corresponding_v = v['db'+str(data_set_index)][batch.index(data_point)]
+                    m['db'+str(data_set_index)][batch.index(data_point)] = beta1*corresponding_m+(1-beta1)*data_point
+                    v['db'+str(data_set_index)][batch.index(data_point)] = beta2*corresponding_v+(1-beta2)*(data_point**2)
+
+                    m_corrected = m['db'+str(data_set_index)][batch.index(data_point)]/(1-beta1**t)
+                    v_corrected = v['db'+str(data_set_index)][batch.index(data_point)]/(1-beta2**t)
+
+                    parameters['db'+str(data_set_index)][batch.index(data_point)] = parameters['db'+str(data_set_index)][batch.index(data_point)]-learning_rate*m_corrected/(math.sqrt(v_corrected)+epsilon)
+                    t += 1
+
+
+        # Nu optimeres vægtene. Der gåes igennem hvert lag, igennem hver batch i de lag, igennem hvert datasæt i de lag
+        # og til sidst igennem hver punkt i de datasæt.
+
+        for data_set in w:
+            data_set_index = (len(b)-b.index(data_set))
+
+
+
+        #m = beta1*m + (1-beta1)*w
+        #v = beta2*v + (1-beta2)*w**2
+
+        #m_corrected = m/(1-beta1**t)
+        #v_corrected = v/(1-beta2**t)
+
+        #parameters = parameters-learning_rate*m_corrected / (v_corrected**(1/2)+epsilon)
 
         return parameters, m, v
 
-    def batch_gradient(self, softmax_output, skalar, inputs):
+    def batch_gradient(self, softmax_output, skalar):
 
         
         softmax_skalar_zip = list(zip(softmax_output,skalar))
@@ -178,7 +225,8 @@ class network:
         self.previous_error = gradient_logits
         self.hidden_layer_weight_gradients = []
         self.hidden_layer_bias_gradients = []
-
+        self.hidden_layer_weight_gradients.append(self.output_weight_bias)
+        self.hidden_layer_bias_gradients.append(self.output_bias_gradient)
         #pprint.pp("hidden weights: "+str(self.output_layer[0].weights))
         #pprint.pp("rwererewrew: "+str(gradient_logits))
         
@@ -191,25 +239,62 @@ class network:
                     the_sum += y[i]*x[i]
                 sum_list.append(the_sum)
             multiplied_weights.append(sum_list)
-        pprint.pp("multi: "+str(multiplied_weights))
+        #pprint.pp("multi: "+str(multiplied_weights))
+        self.previous_error = multiplied_weights
         # måske ReLU
         # gang med input til sidste hidden layer
-        pprint.pp("inouts : "+str(self.hidden_layers[-1].layer_inputs))
+        #pprint.pp("inouts : "+str(self.hidden_layers[-1].layer_inputs))
         hidden_layer_one_weights = []
         for x in multiplied_weights:
             nested_list = []
             for b in x:
+                maybe = []
                 for y in self.hidden_layers[-1].layer_inputs[multiplied_weights.index(x)]:
-                    nested_list.append(b*y)
+                    #print("y "+str(multiplied_weights.index(x))+" "+str(y))
+                    maybe.append(b*y)
+                nested_list.append(maybe)
+                #print("len : "+str(nested_list))
+            hidden_layer_one_weights.append(nested_list)
+        self.hidden_layer_weight_gradients.append(hidden_layer_one_weights)
+        self.hidden_layer_bias_gradients.append(multiplied_weights)
+        self.hidden_layer_one_weights = hidden_layer_one_weights
+        self.hidden_layer_one_bias = multiplied_weights
+        
+        hidden_layers_iterable = self.hidden_layers
+        hidden_layers_iterable.pop()
+        hidden_layers_iterable.reverse()
+        
+        for hidden in hidden_layers_iterable:
+            #pprint.pp("hidden weights: "+str(hidden.weights))
+            multiplied_weights2 = []
+            for x in self.previous_error:
+                sum_list = []
+                for y in [list(row) for row in zip(*hidden.weights)]:
+                    the_sum = 0
+                    for i in range(len(y)):
+                        the_sum += y[i]*x[i]
+                    sum_list.append(the_sum)
+                multiplied_weights2.append(sum_list)
+            #pprint.pp("multi: "+str(multiplied_weights2))
+            self.previous_error = multiplied_weights2
+
+            hidden_layer_one_weights = []
+            for x in multiplied_weights2:
+                nested_list = []
+                for b in x:
+                    maybe = []
+                    for y in hidden.layer_inputs[multiplied_weights2.index(x)]:
+                        #print("y "+str(multiplied_weights.index(x))+" "+str(y))
+                        maybe.append(b*y)
+                    nested_list.append(maybe)
+                    #print("len : "+str(nested_list))
                 hidden_layer_one_weights.append(nested_list)
-                print("len : "+str(len(nested_list)))
-        #pprint.pp("math: "+str(hidden_layer_one_weights))
+            self.hidden_layer_weight_gradients.append(hidden_layer_one_weights)
+            #pprint.pp(hidden_layer_one_weights)
+            self.hidden_layer_bias_gradients.append(multiplied_weights2)
+        
 
-        for x in self.hidden_layers:
-            #pprint.pp("hidden : "+str(len(x.weights)))
-            pass
-
-        return gradient_logits
+        return self.hidden_layer_weight_gradients, self.hidden_layer_bias_gradients
 
     def adam_initialization(self, parameters):
         dict_len = len(parameters) // 2
