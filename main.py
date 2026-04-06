@@ -18,8 +18,8 @@ HIDDEN_LAYERS = 2
 INPUT_NODES = 3
 HIDDEN_LAYERNODES = 10
 OUTPUT_NODES = 3
-#X = [[-1.2,-0.8,-2.4],[-1.4,-0.1,-1.7],[-0.6,-0.2,-0.7],[-1.2,-0.8,-2.6]]
-X = [[-1.2,-0.8,2.5],[-3.2,-2.8,1.5]]
+X = [[-1.2,0.8,-2.4],[-1.4,-0.1,1.7],[-0.6,-0.2,-0.7],[-1.2,0.8,-2.6]]
+#X = [[-1.2,-0.8,2.5],[-0.6,-0.2,-0.7]]
 # Parametre ################################################
 
 
@@ -115,11 +115,14 @@ class network:
             #print("inputs: "+str(inputs))
         self.result = self.output_layer[0].layer_propagationnp(inputs)
         self.result = self.softmax(self.result)
-        print("Output: "+ str(self.result)) 
+        #print("Output: "+ str(self.result)) 
         zipped_list = list(zip(self.result, prediciton))
+        self.predicloss = zipped_list
+        #print("loss: "+str(zipped_list))
         loss_list = list(map(lambda x: -math.log(x[0][x[1]]),zipped_list))
         loss_mean = sum(loss_list)/len(loss_list)
-        print("Loss: "+str(loss_mean))
+        self.loss = loss_mean
+        #print("Loss: "+str(loss_mean))
         #xy = np.array(self.result).flatten()
         #print(len(xy))
         #xp = np.array(range(len(xy)))
@@ -127,31 +130,76 @@ class network:
         #plt.show()
         
 
-    def adam_optimization(self, softmax_output, skalar, inputs):
+    def adam_optimization(self, softmax_output, skalar,inputs, iterations, epoch_amt,):
         parameters = {}
         for x in self.hidden_layers:
             node_weight_dict = x.weights
             node_bias_dict = x.biases
-            parameters["dW"+str(self.hidden_layers.index(x)+1)] = node_weight_dict
-            parameters["db"+str(self.hidden_layers.index(x)+1)] = node_bias_dict
+            parameters["dW"+str(self.hidden_layers.index(x)+1)] = node_weight_dict.copy()
+            parameters["db"+str(self.hidden_layers.index(x)+1)] = node_bias_dict.copy()
         node_weight_dict = self.output_layer[0].weights
         node_bias_dict = self.output_layer[0].biases
         parameters["dW"+str(len(self.hidden_layers)+1)] = node_weight_dict
         parameters["db"+str(len(self.hidden_layers)+1)] = node_bias_dict
-        w,b = self.batch_gradient(softmax_output, skalar)
+        dict_len = len(parameters) // 2
+        for i in range(dict_len):
+            parameters['dW'+str(i+1)] = [list(row) for row in zip(*parameters['dW'+str(i+1)])]
+
+        #w,b = self.batch_gradient(softmax_output, skalar)
         m, v = self.adam_initialization(parameters)
-        for x in w[0]:
-            w[0][w[0].index(x)] = [list(row) for row in zip(*x)]
 
-    
-        
-        
-        w[0] = [list(row) for row in zip(*w[0])]
+        self.m = m
+        self.v = v
+        #pprint.pp("W BEFORE: "+str(len(w[0])))
 
-        self.adam_update_parameters(parameters,w,b,m,v)
+        #for x in w[0]:
+        #    print("ANTAL : ")
+        #    w[0][w[0].index(x)] = [list(row) for row in zip(*x)]
         
+        #
+        self.parameters = parameters
+        
+        self.t = 1
+        #w[0] = [list(row) for row in zip(*w[0])]
+        #the_network.forward_propagationnp(X,prediction)
+        for itera in range(iterations):
+            for epoch in range(epoch_amt):
+                #print(inputs)
+                #print(skalar)
+                self.forward_propagationnp(inputs,skalar)
+                w,b = self.batch_gradient(softmax_output, skalar)
+                for x in w[0]:
+                    w[0][w[0].index(x)] = [list(row) for row in zip(*x)]
 
-    def adam_update_parameters(self, parameters, w,b, m, v, t=1, learning_rate = 0.01, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8):
+                #pprint.pp("parameters: "+str(self.parameters))
+
+
+                parameters, m,v,t = self.adam_update_parameters(self.parameters,w,b,self.m,self.v,self.t)
+                #print("----------------------------------DEN HAR")
+                self.parameters = parameters
+                self.m = m
+                self.v = v
+                self.t = t
+                temp_para = self.parameters.copy()
+                dict_len = len(temp_para) // 2
+                for i in range(dict_len):
+                    temp_para['dW'+str(i+1)] = [list(row) for row in zip(*temp_para['dW'+str(i+1)])]
+                for i in range(dict_len-2):
+                    #print(str(self.hidden_layers))
+                    #print(range(dict_len-2))
+
+                    # De skal tilbage
+                    self.hidden_layers[i].weights = temp_para['dW'+str(i+1)]
+                    self.hidden_layers[i].biases = temp_para['db'+str(i+1)]
+                self.output_layer[0].weights = temp_para['dW'+str(dict_len)]
+                self.output_layer[0].biases = temp_para['db'+str(dict_len)]
+            #print("lille test")
+            self.forward_propagationnp(inputs,skalar)
+            print("---------------------  "+str((itera+1)*100) + "  ---------------------")
+            print("New loss: "+str(self.loss))
+            print("New loss output: "+str(self.predicloss))
+
+    def adam_update_parameters(self, parameters, w,b, m, v, t, learning_rate = 0.01, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8):
         
         # For w, så er der 3 lister, hver liste har lister som tilhører hver deres batch: [[[b1],[b2],[b3],],[[b1],[b2],[b3]],[[b1],[b2],[b3]]]
         # bias er på samme måde, alle første lag er groupet sammen og resten er også groupet sammen.
@@ -163,39 +211,62 @@ class network:
 
         # ----- I dette tilfælde bliver der ikke tage summen eller gennemsnittet af gradientsne.
 
-        pprint.pp("parameters: "+str(parameters))
-        pprint.pp("w: "+str(w))
-        pprint.pp("b: "+str(b))
-        pprint.pp("m: "+str(m))
-        pprint.pp("v: "+str(v))
+        #pprint.pp("parameters: "+str(parameters))
+        #pprint.pp("w: "+str(w))
+        #print("len w:"+str(len(w)))
+        #pprint.pp("b: "+str(b))
+        #pprint.pp("m: "+str(m))
+        #pprint.pp("v: "+str(v))
         
         # der regnes først for bias.
         # output til input
         for data_set in b:
             data_set_index = (len(b)-b.index(data_set))
             for batch in data_set:
-                t = 1
+                #t = 1
                 for data_point in batch:
-                    corresponding_m = m['db'+str(data_set_index)][batch.index(data_point)]
-                    corresponding_v = v['db'+str(data_set_index)][batch.index(data_point)]
-                    m['db'+str(data_set_index)][batch.index(data_point)] = beta1*corresponding_m+(1-beta1)*data_point
-                    v['db'+str(data_set_index)][batch.index(data_point)] = beta2*corresponding_v+(1-beta2)*(data_point**2)
+                    corresponding_m = m['db'+str(data_set_index)][0][batch.index(data_point)]
+                    corresponding_v = v['db'+str(data_set_index)][0][batch.index(data_point)]
+                    m['db'+str(data_set_index)][0][batch.index(data_point)] = beta1*corresponding_m+(1-beta1)*data_point
+                    v['db'+str(data_set_index)][0][batch.index(data_point)] = beta2*corresponding_v+(1-beta2)*(data_point**2)
 
-                    m_corrected = m['db'+str(data_set_index)][batch.index(data_point)]/(1-beta1**t)
-                    v_corrected = v['db'+str(data_set_index)][batch.index(data_point)]/(1-beta2**t)
+                    m_corrected = m['db'+str(data_set_index)][0][batch.index(data_point)]/(1-beta1**t)
+                    v_corrected = v['db'+str(data_set_index)][0][batch.index(data_point)]/(1-beta2**t)
 
-                    parameters['db'+str(data_set_index)][batch.index(data_point)] = parameters['db'+str(data_set_index)][batch.index(data_point)]-learning_rate*m_corrected/(math.sqrt(v_corrected)+epsilon)
-                    t += 1
+                    parameters['db'+str(data_set_index)][0][batch.index(data_point)] = parameters['db'+str(data_set_index)][0][batch.index(data_point)]-learning_rate*m_corrected/(math.sqrt(v_corrected)+epsilon)
+                    #t += 1
 
 
         # Nu optimeres vægtene. Der gåes igennem hvert lag, igennem hver batch i de lag, igennem hvert datasæt i de lag
         # og til sidst igennem hver punkt i de datasæt.
 
-        for data_set in w:
-            data_set_index = (len(b)-b.index(data_set))
+        
+        for node_layer in w:
+            data_set_index = (len(w)-w.index(node_layer))
+            for batch in node_layer:
+                #t = 1
+                for node in batch:
+                    node_index = batch.index(node)
+                    for data_point in node:
+                        data_point_index = node.index(data_point)
+                        #print("Dw1..2..3: "+str(data_set_index))
+                        #print("Node 1...2..3: "+str(node_index))
+                        #print("datapoint: "+str(data_point_index))
+                        #print("dW result: "+str(parameters['dW'+str(data_set_index)]))
+                        #print("node result: "+str(parameters['dW'+str(data_set_index)][node_index]))
+                        #print("whole result: "+str(parameters['dW'+str(data_set_index)][node_index][data_point_index]))
 
+                        corresponding_m = m['dW'+str(data_set_index)][node_index][data_point_index]
+                        corresponding_v = v['dW'+str(data_set_index)][node_index][data_point_index]
 
+                        m['dW'+str(data_set_index)][node_index][data_point_index] = beta1*corresponding_m + (1-beta1)*data_point
+                        v['dW'+str(data_set_index)][node_index][data_point_index] = beta2*corresponding_v + (1-beta2)*(data_point**2)
 
+                        m_corrected = m['dW'+str(data_set_index)][node_index][data_point_index] / (1-beta1**t)
+                        v_corrected = v['dW'+str(data_set_index)][node_index][data_point_index] / (1-beta2**t)
+
+                        parameters['dW'+str(data_set_index)][node_index][data_point_index] = parameters['dW'+str(data_set_index)][node_index][data_point_index] - learning_rate*m_corrected / (math.sqrt(v_corrected)+epsilon)
+                        #t += 1
         #m = beta1*m + (1-beta1)*w
         #v = beta2*v + (1-beta2)*w**2
 
@@ -204,7 +275,7 @@ class network:
 
         #parameters = parameters-learning_rate*m_corrected / (v_corrected**(1/2)+epsilon)
 
-        return parameters, m, v
+        return parameters, m, v, t+1
 
     def batch_gradient(self, softmax_output, skalar):
 
@@ -215,6 +286,7 @@ class network:
         gradient_weights = [[[x * y for y in t[1]] for x in t[0]] for t in gradient_weights_zip]
         self.output_bias_gradient = gradient_logits
         self.output_weight_bias = gradient_weights
+        #pprint.pp("W gradients before: "+str(gradient_weights))
 
         #pprint.pp(gradient_logits)
         #pprint.pp("hidden out: "+str(self.layer_results_RELU[-1]))
@@ -260,7 +332,7 @@ class network:
         self.hidden_layer_one_weights = hidden_layer_one_weights
         self.hidden_layer_one_bias = multiplied_weights
         
-        hidden_layers_iterable = self.hidden_layers
+        hidden_layers_iterable = self.hidden_layers.copy()
         hidden_layers_iterable.pop()
         hidden_layers_iterable.reverse()
         
@@ -304,6 +376,9 @@ class network:
         for i in range(dict_len):
             s['dW'+str(i+1)] = list(map(lambda x: list(map(lambda xx: 0, x)), parameters['dW'+ str(i+1)]))
             s['db'+str(i+1)] = list(map(lambda x: list(map(lambda xx: 0,x)), parameters['db'+ str(i+1)]))
+        #for i in range(dict_len):
+        #    s['dW'+str(i+1)] = [list(row) for row in zip(*s['dW'+str(i+1)])]
+        
         v = s.copy()
         return v, s
 
@@ -332,7 +407,7 @@ class network:
         return ra
 
     def softmax(self,out):
-        print(out)
+        #print(out)
         overflow_proc = self.softmax_maxim(out)
         e_xtemp = list(map(lambda nestedlist: list(map(lambda x: math.exp(x),nestedlist)),overflow_proc))
 
@@ -352,31 +427,7 @@ class network:
         return e_xtempsum
 
 
-    # SLETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-    def create_layers(self):
-        self.input_layer.append(layer(self.input_nodes,"input_layer",0))
-        for x in range(self.hidden_layersamt):
-            if x == 0:
-                self.hidden_layers.append(layer(self.hidden_layernodes, "hidden_layer"+str(x+1),self.input_nodes))
-            else:
-                self.hidden_layers.append(layer(self.hidden_layernodes, "hidden_layer"+str(x+1),self.hidden_layernodes))
-        if self.hidden_layersamt > 0:
-            self.output_layer.append(layer(self.output_nodes, "output_layer",self.hidden_layernodes))
-        else:
-            self.output_layer.append(layer(self.output_nodes, "output_layer",self.input_nodes))
-    # SLETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-    def forward_propagation(self,inputs):
-        self.input_layer[0].layer_propagation(inputs)
-        for x in self.hidden_layers:
-            if self.hidden_layers.index(x) == 0:
-                x.layer_propagation(inputs)
-            else:
-                indx = self.hidden_layers.index(x)
-                tmpinputs = self.hidden_layers[indx-1].get_all_outputs()
-                print(tmpinputs)
-                x.layer_propagation(tmpinputs)
-        tmpinputs = self.hidden_layers[-1].get_all_outputs()
-        self.output_layer[0].layer_propagation(tmpinputs)
+    
 
 class layer:
     def __init__(self,layer_nodesamt,layer_name):
@@ -416,7 +467,7 @@ class layer:
         #pprint.pp("res: "+str(np.dot(inputs, self.weights)))
         #pprint.pp("weight : "+str(self.weights))
         #pprint.pp("weighwoit: "+str(weights_transposed))
-        
+        #print("Den har kørt her")
         output = [[sum(x*y+self.biases[0][weights_transposed.index(a_row)] for x,y in zip(a_row, b_row)) for a_row in weights_transposed] for b_row in inputs]
         #pprint.pp("Test: "+str(output))
         self.layer_output = output
@@ -424,63 +475,11 @@ class layer:
         return self.layer_output
 
 
-    # SLETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-    def create_nodes(self):
-        for x in range(self.layer_nodesamt):
-            weight_array = []
-            for y in range(self.weight_amt):
-                weight_array.append(random.uniform(-4,4))
-            self.layer_nodes.append(node(weight_array))
-        #print(self.layer_nodes)
-    # SLETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-    def layer_propagation(self,inputs):
-        print(self.layer_name)
-        if self.layer_name != "input_layer":
-            for x in self.layer_nodes:
-                x.output_calculate(inputs)
-        else:
-            for x in self.layer_nodes:
-                indx = self.layer_nodes.index(x)
-                x.inputnode_output(inputs[indx])
-
-    # SLETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-    def get_all_outputs(self):
-        output_to_input = []
-        for x in self.layer_nodes:
-            output_to_input.append(x.o)
-        return output_to_input
+    
 
 
 
-# SLETTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-class node:
-    def __init__(self,weights):
-        # , inputs, weights, bias
-        #self.i = inputs
-        self.w = weights
-        print("Weights: "+ str(weights))
-        self.b = random.uniform(-4,4)
-        print("Bias: "+ str(self.b))
 
-
-    def output_calculate(self,inputs):
-        # Slet kommentarer hvis klar
-        # Finder outputtet af noden med skalarproduktet via numpy
-
-
-        #output = 0
-        #for x in inputs:
-        #    indx = inputs.index(x)
-        #    output = output + (x*self.w[indx])
-        #output = output + self.b
-        #output = self.i[0]*self.w[0]+self.i[1]*self.w[1]+self.i[2]*self.w[2]+ self.b
-        self.o = np.dot(inputs,self.w)+self.b
-        print("Node output: "+str(self.o))
-        #print("Node ouput using dot: "+ str(np.dot(inputs,self.w)+self.b))
-
-    def inputnode_output(self,input):
-        self.o = input
-        print("Input node input: "+str(self.o))
 
 def create_network(hidden_layers, input_nodes, hidden_layernodes, output_nodes):
     return network(hidden_layers, input_nodes, hidden_layernodes, output_nodes)
@@ -495,11 +494,12 @@ def main():
     print("Python version:", sys.version)
     print("numpy version:", np.__version__)
     print("Matplotlib version:", matplotlib.__version__)
-    prediction = [0,1,2,0] 
+    prediction = [0,2,1,2] 
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
     the_network.load_file('network.json')
+
     the_network.forward_propagationnp(X,prediction)
-    the_network.adam_optimization(the_network.softmax_result, prediction,X)
+    the_network.adam_optimization(the_network.softmax_result, prediction,X,10,100)
     #the_network.save_network()
     print("")
     print("Process finished --- %s seconds ---" % (time.time() - start_time))
