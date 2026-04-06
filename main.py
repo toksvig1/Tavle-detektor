@@ -130,7 +130,76 @@ class network:
         #plt.show()
         
 
+   
+
+
+
     def adam_optimization(self, softmax_output, skalar,inputs, iterations, epoch_amt,):
+        parameters = {}
+
+        for i, layer in enumerate(self.hidden_layers):
+            parameters['W'+str(i+1)] = layer.weights
+            parameters['b'+str(i+1)] = layer.biases
+
+        parameters['W'+str(len(self.hidden_layers)+1)] = self.output_layer[0].weights
+        parameters['b'+str(len(self.hidden_layers)+1)] = self.output_layer[0].biases
+
+    # ---- Init Adam ----
+        m, v = self.adam_initialization(parameters)
+
+        self.parameters = parameters
+        self.m = m
+        self.v = v
+        self.t = 0
+
+        # ---- Training ----
+        for itera in range(iterations):
+            for epoch in range(epoch_amt):
+
+                self.forward_propagationnp(inputs, skalar)
+
+                w, b = self.batch_gradient(softmax_output, skalar)
+
+                # ✅ FIX: average gradients
+                #w = average_weight_gradients(w)
+                #b = average_bias_gradients(b)
+
+                # ✅ FIX: timestep update
+                self.t += 1
+
+                parameters, m, v, _ = self.adam_update_parameters(
+                    self.parameters, w, b, self.m, self.v, self.t
+                )
+
+                self.parameters = parameters
+                self.m = m
+                self.v = v
+
+                # ---- Push back into network ----
+                for i in range(len(self.hidden_layers)):
+                    self.hidden_layers[i].weights = parameters['W'+str(i+1)]
+                    self.hidden_layers[i].biases = parameters['b'+str(i+1)]
+
+            self.output_layer[0].weights = parameters['W'+str(len(self.hidden_layers)+1)]
+            self.output_layer[0].biases = parameters['b'+str(len(self.hidden_layers)+1)]
+
+        # ---- Monitor ----
+        self.forward_propagationnp(inputs, skalar)
+        print("---------------------", (itera+1)*100, "---------------------")
+        print("Loss:", self.loss)
+
+
+
+
+
+
+
+
+
+
+
+
+        '''
         parameters = {}
         for x in self.hidden_layers:
             node_weight_dict = x.weights
@@ -159,7 +228,7 @@ class network:
         #
         self.parameters = parameters
         
-        self.t = 1
+        self.t = 0
         #w[0] = [list(row) for row in zip(*w[0])]
         #the_network.forward_propagationnp(X,prediction)
         for itera in range(iterations):
@@ -170,11 +239,37 @@ class network:
                 w,b = self.batch_gradient(softmax_output, skalar)
                 for x in w[0]:
                     w[0][w[0].index(x)] = [list(row) for row in zip(*x)]
+                def average_gradients(grads):
+                    averaged = []
+                    for layer in grads:
+                        layer_avg = []
+                        for node in zip(*layer):  # iterate over same node across batch
+                            node_avg = []
+                            for weights in zip(*node):
+                                node_avg.append(sum(weights)/len(weights))
+                            layer_avg.append(node_avg)
+                        averaged.append(layer_avg)
+                    return averaged
+                
+                def average_bias_gradients(bias_grads):
+                    averaged = []
+    
+                    for layer in bias_grads:
+                        # layer = list of gradients per datapoint
+                        layer_avg = []
+        
+                        for values in zip(*layer):  # iterate over each bias position
+                            layer_avg.append(sum(values) / len(values))
+        
+                        averaged.append([layer_avg])  # keep shape [[...]]
+    
+                    return averaged
 
                 #pprint.pp("parameters: "+str(self.parameters))
-
-
-                parameters, m,v,t = self.adam_update_parameters(self.parameters,w,b,self.m,self.v,self.t)
+                w = average_gradients(w)
+                b = average_bias_gradients(b)
+                self.t += 1
+                parameters, m,v,_ = self.adam_update_parameters(self.parameters,w,b,self.m,self.v,self.t)
                 #print("----------------------------------DEN HAR")
                 self.parameters = parameters
                 self.m = m
@@ -198,8 +293,9 @@ class network:
             print("---------------------  "+str((itera+1)*100) + "  ---------------------")
             print("New loss: "+str(self.loss))
             print("New loss output: "+str(self.predicloss))
+            '''
 
-    def adam_update_parameters(self, parameters, w,b, m, v, t, learning_rate = 0.01, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-8):
+    def adam_update_parameters(self, parameters, w,b, m, v, t, lr = 0.001, beta1 = 0.9, beta2 = 0.999, eps = 1e-8):
         
         # For w, så er der 3 lister, hver liste har lister som tilhører hver deres batch: [[[b1],[b2],[b3],],[[b1],[b2],[b3]],[[b1],[b2],[b3]]]
         # bias er på samme måde, alle første lag er groupet sammen og resten er også groupet sammen.
@@ -220,6 +316,46 @@ class network:
         
         # der regnes først for bias.
         # output til input
+        L = len(w)
+
+        for l in range(L):
+
+            # ---- Weights ----
+            for i in range(len(w[l])):
+                for j in range(len(w[l][i])):
+
+                    grad = w[l][i][j]
+
+                    m['W'+str(l+1)][i][j] = beta1 * m['W'+str(l+1)][i][j] + (1-beta1)*grad
+                    v['W'+str(l+str(l+1))][i][j] = beta2 * v['W'+str(l+1)][i][j] + (1-beta2)*(grad**2)
+
+                    m_hat = m['W'+str(l+1)][i][j] / (1 - beta1**t)
+                    v_hat = v['W'+str(l+1)][i][j] / (1 - beta2**t)
+
+                    parameters['W'+str(l+1)][i][j] -= lr * m_hat / (math.sqrt(v_hat) + eps)
+
+            # ---- Bias ----
+            for j in range(len(b[l][0])):
+
+                grad = b[l][0][j]
+
+                m['b'+str(l+1)][0][j] = beta1 * m['b'+str(l+1)][0][j] + (1-beta1)*grad
+                v['b'+str(l+1)][0][j] = beta2 * v['b'+str(l+1)][0][j] + (1-beta2)*(grad**2)
+
+                m_hat = m['b'+str(l+1)][0][j] / (1 - beta1**t)
+                v_hat = v['b'+str(l+1)][0][j] / (1 - beta2**t)
+
+                parameters['b'+str(l+1)][0][j] -= lr * m_hat / (math.sqrt(v_hat) + eps)
+
+        return parameters, m, v, t
+
+
+
+
+
+
+
+        '''
         for data_set in b:
             data_set_index = (len(b)-b.index(data_set))
             for batch in data_set:
@@ -276,7 +412,7 @@ class network:
         #parameters = parameters-learning_rate*m_corrected / (v_corrected**(1/2)+epsilon)
 
         return parameters, m, v, t+1
-
+        '''
     def batch_gradient(self, softmax_output, skalar):
 
         
@@ -499,7 +635,7 @@ def main():
     the_network.load_file('network.json')
 
     the_network.forward_propagationnp(X,prediction)
-    the_network.adam_optimization(the_network.softmax_result, prediction,X,10,100)
+    the_network.adam_optimizationn(the_network.softmax_result, prediction,X,10,100)
     #the_network.save_network()
     print("")
     print("Process finished --- %s seconds ---" % (time.time() - start_time))
