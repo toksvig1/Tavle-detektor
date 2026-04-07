@@ -1,6 +1,8 @@
 # De nødvendige bibloteker bliver importeret her.
 import numpy as np # Til matematik
 import sys # Systemet
+from PIL import Image
+from pathlib import Path
 import matplotlib
 import matplotlib.pyplot as plt # Til grafer
 import random # Til weights og bias
@@ -8,6 +10,7 @@ import time # Til at finde ud af hvor lang tid programmet kørte
 import math # Til Eulers tal
 import pprint
 import json
+import os
 
 start_time = time.time()
 #np.random.seed(9150)
@@ -15,11 +18,14 @@ start_time = time.time()
 # Parametre ################################################
 
 HIDDEN_LAYERS = 2
-INPUT_NODES = 3
-HIDDEN_LAYERNODES = 10
-OUTPUT_NODES = 3
+INPUT_NODES = 1024
+HIDDEN_LAYERNODES = 128
+OUTPUT_NODES = 10
 X = [[-1.2,0.8,-2.4],[-1.4,-0.1,1.7],[-0.6,-0.2,-0.7],[-1.2,0.8,-2.6]]
 #X = [[-1.2,-0.8,2.5],[-0.6,-0.2,-0.7]]
+
+sign_names = ["20 sign","30 sign","50 sign","60 sign","70 sign","80 sign","80 ended sign","100 sign","120 sign","oncomming traffic"]
+
 # Parametre ################################################
 
 
@@ -266,14 +272,15 @@ class network:
 
         for itera in range(iterations):
             for epoch in range(epoch_amt):
-                self.forward_propagationnp(inputs, skalar)
-                w, b = self.batch_gradient(self.softmax_result, skalar)
+                inputs2, skalar2 = gather_input(r"C:\Users\htkda\Downloads\Dataset\Dataset",20,3)
+                self.forward_propagationnp(inputs2, skalar2)
+                w, b = self.batch_gradient(self.softmax_result, skalar2)
                 self.adam_step(w, b)
 
-            self.forward_propagationnp(inputs, skalar)
+            self.forward_propagationnp(inputs2, skalar2)
             print("---------------------  " + str((itera + 1) * 100) + "  ---------------------")
             print("New loss: " + str(self.loss))
-            print("New loss output: " + str(self.predicloss))
+            #print("New loss output: " + str(self.predicloss))
 
 
     def temp(self,inputs):
@@ -336,24 +343,93 @@ class layer:
 def create_network(hidden_layers, input_nodes, hidden_layernodes, output_nodes):
     return network(hidden_layers, input_nodes, hidden_layernodes, output_nodes)
 
+def train_init(folder, prediction, HIDDEN_LAYERS, INPUT_NODES, HIDDEN_LAYERNODES, OUTPUT_NODES,batch_size,class_range):
+    #   Netværket skabes med de givne parametre. 
+    #   ReLU activation, softmax activation, cross entropy og adam optimizing.
+    print("Python version:", sys.version)
+    print("Matplotlib version:", matplotlib.__version__)
+
+    the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
+
+
+    #start_time = time.time()
+
+
+def gather_input(folder,batch_size,class_range):
+    input_batches = []
+    skalar_prediction = []
+    for batch in range(batch_size):
+        class_type = random.randint(0,class_range-1)
+        skalar_prediction.append(class_type)
+        path = Path(folder+"/"+str(class_type))
+        images = os.listdir(path)
+        the_image = images[random.randint(0,len(images)-1)]
+        the_image_grayscale = Image.open(folder+"/"+str(class_type)+"/"+the_image).convert('L')
+        the_image_data = list(the_image_grayscale.getdata())
+        the_image_data = [the_image_data[offset:offset+32] for offset in range(0, 32*32, 32)]
+        the_image_data = [item for sublist in the_image_data for item in sublist]
+        input_batches.append(the_image_data)
+    return input_batches, skalar_prediction
+
+def input_of_single_image(image_path,class_range):
+    input_batch = []
+    skalar_prediction = [class_range]
+    path = image_path
+    the_image_grayscale = Image.open(path).convert('L')
+    the_image_data = list(the_image_grayscale.getdata())
+    the_image_data = [the_image_data[offset:offset+32] for offset in range(0, 32*32, 32)]
+    the_image_data = [item for sublist in the_image_data for item in sublist]
+    input_batch.append(the_image_data)
+
+    return input_batch, skalar_prediction
+
+
+def simulate_program(folder, class_range, singleOrMultiple, specific_image):
+    the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
+    the_network.load_file('network.json')
+
+
+
+    if singleOrMultiple == True:
+        predictionvals = []
+        test_length = 20
+        x = 0
+        while x<test_length:
+            time.sleep(5)
+            input_image, prediction = gather_input(folder,1,class_range)
+            the_network.forward_propagationnp(input_image,prediction)
+            #print(the_network.softmax_result)
+            res = max(the_network.softmax_result[0])
+            res_index=(the_network.softmax_result[0].index(res))
+            if prediction[0] == res_index:
+                predictionvals.append(100)
+            x +=1
+        print("Accuracy :"+str(sum(predictionvals)/len(predictionvals)))
+    else:
+        batch, skalar = input_of_single_image(specific_image,1)
+        the_network.forward_propagationnp(batch,skalar)
+        res = max(the_network.softmax_result[0])
+        res_index=(the_network.softmax_result[0].index(res))
+        print("The network predicts that this image, is a: "+sign_names[res_index])
+
 
 def main():
     # Versioner printes
     print("Python version:", sys.version)
     print("numpy version:", np.__version__)
     print("Matplotlib version:", matplotlib.__version__)
-    prediction = [0,2,1,2]
+    prediction = [1,0,0,0]
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
-    the_network.load_file('network.json')
+    #the_network.load_file('network.json')
 
     the_network.forward_propagationnp(X,prediction)
-    the_network.adam_optimization(the_network.softmax_result, prediction,X,100,100)
-    #the_network.save_network()
+    the_network.adam_optimization(the_network.softmax_result, prediction,X,100,10)
+    the_network.save_network()
     print("")
     print("Process finished --- %s seconds ---" % (time.time() - start_time))
     print("Can run at %s fps." % (1/(time.time() - start_time)))
 
 
-# Programmet kan kun køres som script, og kan ikke importeres i andre scripts.
+# Programmet kører kun main(), hvis det køres som hoved programmet.
 if __name__ == "__main__":
     main()
