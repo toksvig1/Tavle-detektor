@@ -20,7 +20,7 @@ start_time = time.time()
 HIDDEN_LAYERS = 2
 INPUT_NODES = 1024
 HIDDEN_LAYERNODES = 128
-OUTPUT_NODES = 10
+OUTPUT_NODES = 3
 X = [[-1.2,0.8,-2.4],[-1.4,-0.1,1.7],[-0.6,-0.2,-0.7],[-1.2,0.8,-2.6]]
 #X = [[-1.2,-0.8,2.5],[-0.6,-0.2,-0.7]]
 
@@ -116,6 +116,16 @@ class network:
         zipped_list = list(zip(self.result, prediciton))
         self.predicloss = zipped_list
         loss_list = list(map(lambda x: -math.log(max(x[0][x[1]], 1e-15)), zipped_list))
+        acc = []
+        for x in zipped_list:
+            max_val = max(x[0])
+            max_val_indx = x[0].index(max_val)
+            if max_val_indx == x[1]:
+                acc.append(100)
+            else:
+                acc.append(0)
+        self.accuracy = sum(acc)/len(acc)
+
         loss_mean = sum(loss_list)/len(loss_list)
         self.loss = loss_mean
 
@@ -271,15 +281,18 @@ class network:
         self.init_adam()
 
         for itera in range(iterations):
+            ent_acc = []
             for epoch in range(epoch_amt):
                 inputs2, skalar2 = gather_input(r"C:\Users\htkda\Downloads\Dataset\Dataset",20,3)
                 self.forward_propagationnp(inputs2, skalar2)
                 w, b = self.batch_gradient(self.softmax_result, skalar2)
                 self.adam_step(w, b)
+                ent_acc.append(self.accuracy)
 
             self.forward_propagationnp(inputs2, skalar2)
             print("---------------------  " + str((itera + 1) * 100) + "  ---------------------")
             print("New loss: " + str(self.loss))
+            print("Accuracy of the model: "+str(sum(ent_acc)/len(ent_acc)))
             #print("New loss output: " + str(self.predicloss))
 
 
@@ -405,12 +418,14 @@ def simulate_program(folder, class_range, singleOrMultiple, specific_image):
                 predictionvals.append(100)
             x +=1
         print("Accuracy :"+str(sum(predictionvals)/len(predictionvals)))
+        return sum(predictionvals)/len(predictionvals)
     else:
         batch, skalar = input_of_single_image(specific_image,1)
         the_network.forward_propagationnp(batch,skalar)
         res = max(the_network.softmax_result[0])
         res_index=(the_network.softmax_result[0].index(res))
         print("The network predicts that this image, is a: "+sign_names[res_index])
+        return sign_names[res_index]
 
 
 def main():
