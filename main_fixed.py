@@ -405,7 +405,7 @@ def simulate_program(folder, class_range, singleOrMultiple, specific_image):
 
     if singleOrMultiple == True:
         predictionvals = []
-        test_length = 20
+        test_length = 100
         x = 0
         while x<test_length:
             time.sleep(5)
