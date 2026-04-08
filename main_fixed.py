@@ -411,11 +411,13 @@ def simulate_program(folder, class_range, singleOrMultiple, specific_image):
             time.sleep(5)
             input_image, prediction = gather_input(folder,1,class_range)
             the_network.forward_propagationnp(input_image,prediction)
-            #print(the_network.softmax_result)
+            print("Færdig med billede: "+str(x))
             res = max(the_network.softmax_result[0])
             res_index=(the_network.softmax_result[0].index(res))
             if prediction[0] == res_index:
                 predictionvals.append(100)
+            else:
+                predictionvals.append(0)
             x +=1
         print("Accuracy :"+str(sum(predictionvals)/len(predictionvals)))
         return sum(predictionvals)/len(predictionvals)

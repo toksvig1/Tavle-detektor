@@ -4,4 +4,4 @@ import time
 import json
 import main_fixed
 
-main_fixed.simulate_program(r"C:\Users\htkda\Downloads\Dataset\Dataset",1,False,r"C:\Users\htkda\Downloads\Dataset\Dataset\2\2_31967_1577672019.0857935.png")
+main_fixed.simulate_program(r"Dataset",3,True,r"Dataset\1\1_2968_1577671992.2314682.png")
