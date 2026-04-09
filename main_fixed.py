@@ -277,13 +277,13 @@ class network:
                 lay.biases[0][j] -= lr * m_hat / (math.sqrt(v_hat) + eps)
 
 
-    def adam_optimization(self, softmax_output, skalar, inputs, iterations, epoch_amt):
+    def adam_optimization(self, iterations, epoch_amt,class_range,batch_size):
         self.init_adam()
 
         for itera in range(iterations):
             ent_acc = []
             for epoch in range(epoch_amt):
-                inputs2, skalar2 = gather_input(r"C:\Users\htkda\Downloads\Dataset\Dataset",20,3)
+                inputs2, skalar2 = gather_input(r"C:\Users\htkda\Downloads\Dataset\Dataset",batch_size,class_range)
                 self.forward_propagationnp(inputs2, skalar2)
                 w, b = self.batch_gradient(self.softmax_result, skalar2)
                 self.adam_step(w, b)
@@ -293,6 +293,7 @@ class network:
             print("---------------------  " + str((itera + 1) * 100) + "  ---------------------")
             print("New loss: " + str(self.loss))
             print("Accuracy of the model: "+str(sum(ent_acc)/len(ent_acc)))
+            self.model_accuracy = sum(ent_acc)/len(ent_acc)
             #print("New loss output: " + str(self.predicloss))
 
 
@@ -356,16 +357,21 @@ class layer:
 def create_network(hidden_layers, input_nodes, hidden_layernodes, output_nodes):
     return network(hidden_layers, input_nodes, hidden_layernodes, output_nodes)
 
-def train_init(folder, prediction, HIDDEN_LAYERS, INPUT_NODES, HIDDEN_LAYERNODES, OUTPUT_NODES,batch_size,class_range):
+def train_init(folder, HIDDEN_LAYERS, INPUT_NODES, HIDDEN_LAYERNODES, OUTPUT_NODES,epoch_amt,batch_amt,class_range, batch_size):
     #   Netværket skabes med de givne parametre. 
     #   ReLU activation, softmax activation, cross entropy og adam optimizing.
     print("Python version:", sys.version)
     print("Matplotlib version:", matplotlib.__version__)
 
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
+    first_batch, first_prediction = gather_input(folder,1,class_range)
+    the_network.forward_propagationnp(first_batch,first_prediction)
+    the_network.adam_optimization(batch_amt, epoch_amt, class_range, batch_size)
+    the_network.save_network()
 
+    return the_network.model_accuracy
 
-    #start_time = time.time()
+    
 
 
 def gather_input(folder,batch_size,class_range):
@@ -399,7 +405,7 @@ def input_of_single_image(image_path,class_range):
 
 def simulate_program(folder, class_range, singleOrMultiple, specific_image):
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
-    the_network.load_file('network.json')
+    the_network.load_file(folder)
 
 
 
@@ -437,10 +443,9 @@ def main():
     print("Matplotlib version:", matplotlib.__version__)
     prediction = [1,0,0,0]
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
-    #the_network.load_file('network.json')
 
     the_network.forward_propagationnp(X,prediction)
-    the_network.adam_optimization(the_network.softmax_result, prediction,X,100,10)
+    the_network.adam_optimization(100,10,3,20)
     the_network.save_network()
     print("")
     print("Process finished --- %s seconds ---" % (time.time() - start_time))
