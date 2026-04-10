@@ -8,21 +8,19 @@ import matplotlib.pyplot as plt # Til grafer
 import random # Til weights og bias
 import time # Til at finde ud af hvor lang tid programmet kørte
 import math # Til Eulers tal
-import pprint
 import json
 import os
 
-start_time = time.time()
-#np.random.seed(9150)
+
 
 # Parametre ################################################
 
-HIDDEN_LAYERS = 2
-INPUT_NODES = 1024
-HIDDEN_LAYERNODES = 128
-OUTPUT_NODES = 3
-X = [[-1.2,0.8,-2.4],[-1.4,-0.1,1.7],[-0.6,-0.2,-0.7],[-1.2,0.8,-2.6]]
-#X = [[-1.2,-0.8,2.5],[-0.6,-0.2,-0.7]]
+#HIDDEN_LAYERS = 2
+#INPUT_NODES = 1024
+#HIDDEN_LAYERNODES = 128
+#OUTPUT_NODES = 3
+#X = [[-1.2,0.8,-2.4],[-1.4,-0.1,1.7],[-0.6,-0.2,-0.7],[-1.2,0.8,-2.6]]
+
 
 sign_names = ["20 sign","30 sign","50 sign","60 sign","70 sign","80 sign","80 ended sign","100 sign","120 sign","oncomming traffic"]
 
@@ -33,6 +31,8 @@ sign_names = ["20 sign","30 sign","50 sign","60 sign","70 sign","80 sign","80 en
 
 class network:
     def __init__(self,hidden_layersamt, input_nodes, hidden_layernodes, output_nodes):
+        # Skaber alle lag i netværket.
+
         self.hidden_layersamt = hidden_layersamt
         self.input_nodes = input_nodes
         self.hidden_layernodes = hidden_layernodes
@@ -45,6 +45,8 @@ class network:
 
 
     def load_file(self, load_file):
+        # Indlæser det gemte netværk fra en JSON fil.
+
         with open(load_file, 'r') as file:
             data = json.load(file)
             self.hidden_layersamt = data['HIDDEN_LAYERS']
@@ -74,6 +76,8 @@ class network:
 
 
     def save_network(self):
+        # Gemmer netværkets weights, biases og diverse værdier, til en JSON fil.
+
         save_dict = {}
         save_dict['HIDDEN_LAYERS'] = self.hidden_layersamt
         save_dict['INPUT_NODES'] = self.input_nodes
@@ -91,9 +95,11 @@ class network:
 
 
     def load_layer(self, node_input, node_output):
+        # Bruges til at opdatere lag, med de gemte værdier til netværket.
         return layer(node_input, node_output)
 
     def create_layersnp(self):
+        # Skaber alle lag. De lægges ind i attributter, der gemmer dem.
         for x in range(self.hidden_layersamt):
             if x == 0:
                 self.hidden_layers.append(layer(self.input_nodes,self.hidden_layernodes))
@@ -106,6 +112,8 @@ class network:
 
 
     def forward_propagationnp(self,inputs,prediciton):
+        # Normal forward propagation, dog uden numpy.
+
         self.layer_results_RELU = []
         for x in self.hidden_layers:
             inputs = self.maxim(x.layer_propagationnp(inputs))
@@ -131,6 +139,8 @@ class network:
 
 
     def init_adam(self):
+        # Skaber begge momenter.
+        # Begge har nul værdier i stedet for rigtige momenter, da det er første iteration.
         self.m = []
         self.v = []
 
@@ -150,6 +160,8 @@ class network:
 
 
     def batch_gradient(self, softmax_output, skalar):
+        # Beregner gradients for alle weights og biases.
+        #
         batch_size = len(softmax_output)
         layer_count = len(self.hidden_layers) + 1
 
@@ -247,6 +259,10 @@ class network:
 
 
     def adam_step(self, w, b, lr=0.001, beta1=0.9, beta2=0.999, eps=1e-8):
+        # Adam step funktionen.
+        # Træner netværket en gang, baseret på det tidligere resultat.
+
+
         self.t += 1
         all_layers = self.hidden_layers + self.output_layer
 
@@ -278,6 +294,11 @@ class network:
 
 
     def adam_optimization(self, iterations, epoch_amt,class_range,batch_size):
+        # Adam optimering
+        # En batch af 'batch_size' billeder, bliver kørt igennem, og bagefter køres
+        # adam_step() for at lave de relevante beregninger til at opdatere weights og biases.
+
+
         self.init_adam()
 
         for itera in range(iterations):
@@ -294,7 +315,6 @@ class network:
             print("New loss: " + str(self.loss))
             print("Accuracy of the model: "+str(sum(ent_acc)/len(ent_acc)))
             self.model_accuracy = sum(ent_acc)/len(ent_acc)
-            #print("New loss output: " + str(self.predicloss))
 
 
     def temp(self,inputs):
@@ -305,6 +325,8 @@ class network:
 
 
     def maxim(self,inputs):
+        # Fungerer som np.max(). 
+        # ReLU aktivations funktionen.
         rt = []
         for x in inputs:
             rtt = []
@@ -314,6 +336,7 @@ class network:
         return rt
 
     def softmax_maxim(self,out):
+        # Overflow beskyttelse til softmax funktionen.
         ra = []
         for x in out:
             biggest_val = max(x)
@@ -322,6 +345,10 @@ class network:
         return ra
 
     def softmax(self,out):
+        # Softmax aktivation, bruges til det sidste lag. 
+        # Eulers tal opløftes i alle værdierne af udgangslaget. 
+        # Hvert tal divideres af summen af alle tal.
+
         overflow_proc = self.softmax_maxim(out)
         e_xtemp = list(map(lambda nestedlist: list(map(lambda x: math.exp(x),nestedlist)),overflow_proc))
 
@@ -335,6 +362,8 @@ class network:
 
 class layer:
     def __init__(self,layer_nodesamt,layer_name):
+        # Alle attributter får deres værdier tildelt.
+        # Vægtene skabes. Deres værdier går fra -1 til 1.
         self.layer_nodesamt = layer_nodesamt
         self.layer_name = layer_name
         self.layer_nodes = []
@@ -347,6 +376,9 @@ class layer:
 
 
     def layer_propagationnp(self, inputs):
+        # Forward propagation. Vægtene tranposes, så dimensionerne passer.
+        # Der bruges list comprehension til at regne resultaterne. 
+        # Regnes som skalar produktet.
         self.layer_inputs = inputs
         weights_transposed = list(map(list, zip(*self.weights)))
         output = [[sum(x*y+self.biases[0][weights_transposed.index(a_row)] for x,y in zip(a_row, b_row)) for a_row in weights_transposed] for b_row in inputs]
@@ -362,12 +394,14 @@ def train_init(folder, HIDDEN_LAYERS, INPUT_NODES, HIDDEN_LAYERNODES, OUTPUT_NOD
     #   ReLU activation, softmax activation, cross entropy og adam optimizing.
     print("Python version:", sys.version)
     print("Matplotlib version:", matplotlib.__version__)
-
+    start_time = time.time()
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
     first_batch, first_prediction = gather_input(folder,1,class_range)
     the_network.forward_propagationnp(first_batch,first_prediction)
     the_network.adam_optimization(batch_amt, epoch_amt, class_range, batch_size)
     the_network.save_network()
+
+    print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
     return the_network.model_accuracy
 
@@ -375,6 +409,8 @@ def train_init(folder, HIDDEN_LAYERS, INPUT_NODES, HIDDEN_LAYERNODES, OUTPUT_NOD
 
 
 def gather_input(folder,batch_size,class_range):
+    # Brugt at netværket til at indsamle data på billederne.
+    # Dataet bliver brugt til at øve netværket.
     input_batches = []
     skalar_prediction = []
     for batch in range(batch_size):
@@ -391,6 +427,8 @@ def gather_input(folder,batch_size,class_range):
     return input_batches, skalar_prediction
 
 def input_of_single_image(image_path,class_range):
+    # Brugt at network_runner.py til at få dataet af et enkelt billede.
+    #
     input_batch = []
     skalar_prediction = [class_range]
     path = image_path
@@ -403,13 +441,16 @@ def input_of_single_image(image_path,class_range):
     return input_batch, skalar_prediction
 
 
-def simulate_program(folder, class_range, singleOrMultiple, specific_image):
+def simulate_program(folder, class_range, singleOrMultiple, specific_image, HIDDEN_LAYERS, INPUT_NODES, HIDDEN_LAYERNODES, OUTPUT_NODES):
+    # Funktionen der bruges af network_runner.py, til at kører netværket.
+    #
     the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
     the_network.load_file(folder)
 
 
-
+    
     if singleOrMultiple == True:
+        start_time = time.time()
         predictionvals = []
         test_length = 100
         x = 0
@@ -426,10 +467,15 @@ def simulate_program(folder, class_range, singleOrMultiple, specific_image):
                 predictionvals.append(0)
             x +=1
         print("Accuracy :"+str(sum(predictionvals)/len(predictionvals)))
+        print("")
+        print("Process finished --- %s seconds ---" % (time.time() - start_time))
         return sum(predictionvals)/len(predictionvals)
     else:
         batch, skalar = input_of_single_image(specific_image,1)
+        start_time = time.time()
         the_network.forward_propagationnp(batch,skalar)
+        print("Process finished --- %s seconds ---" % (time.time() - start_time))
+        print("Can run at %s fps." % (1/(time.time() - start_time)))
         res = max(the_network.softmax_result[0])
         res_index=(the_network.softmax_result[0].index(res))
         print("The network predicts that this image, is a: "+sign_names[res_index])
@@ -437,20 +483,17 @@ def simulate_program(folder, class_range, singleOrMultiple, specific_image):
 
 
 def main():
-    # Versioner printes
-    print("Python version:", sys.version)
-    print("numpy version:", np.__version__)
-    print("Matplotlib version:", matplotlib.__version__)
-    prediction = [1,0,0,0]
-    the_network = create_network(HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES)
+    # Funktion der kører, hvis denne fil bliver kørt alene.
 
-    the_network.forward_propagationnp(X,prediction)
-    the_network.adam_optimization(100,10,3,20)
-    the_network.save_network()
-    print("")
-    print("Process finished --- %s seconds ---" % (time.time() - start_time))
-    print("Can run at %s fps." % (1/(time.time() - start_time)))
-
+    print(" ")
+    print(" ")
+    print("-----------------------------------------")
+    print("Dette program blev lavet i forbindelse med et programmering eksamensprojekt.")
+    print("-----------------------------------------")
+    print("Denne fil kan ikke køres alene.")
+    print("Brug network_trainer.py eller network_runner.py, til at køre netværket.")
+    print(" ")
+    print(" ")
 
 # Programmet kører kun main(), hvis det køres som hoved programmet.
 if __name__ == "__main__":

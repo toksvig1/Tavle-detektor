@@ -5,7 +5,7 @@ from tkinter import filedialog as fd
 import math
 import time
 import json
-import main_fixed
+import network_controller
 
 
 root = Tk()
@@ -48,7 +48,7 @@ def trainer():
 
 
     label8 = Label(root,text='Netværket træner... Dette kan tage nogle minutter til nogle timer...').grid(column=0,row=8,sticky=W)
-    acc = main_fixed.train_init(filenames,HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES,epoch_amt,batch_amt,class_range,batch_size)
+    acc = network_controller.train_init(filenames,HIDDEN_LAYERS,INPUT_NODES,HIDDEN_LAYERNODES,OUTPUT_NODES,epoch_amt,batch_amt,class_range,batch_size)
     label8 = Label(root,text='Resultat: '+str(acc)+"%                                                                                                                  ").grid(column=0,row=8,sticky=W)
 
 

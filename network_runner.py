@@ -5,7 +5,7 @@ from tkinter import filedialog as fd
 import math
 import time
 import json
-import main_fixed
+import network_controller
 
 
 root = Tk()
@@ -44,7 +44,18 @@ def select_image():
     
 
 def run_ai():
-    res = main_fixed.simulate_program(filenames,3,False,filename)
+    HIDDEN_LAYERS = 0
+    HIDDEN_LAYERNODES = 0
+    INPUT_NODES = 0
+    OUTPUT_NODES = 0
+    with open(filenames, 'r') as file:
+            data = json.load(file)
+            HIDDEN_LAYERS = data['HIDDEN_LAYERS']
+            HIDDEN_LAYERNODES = data['HIDDEN_LAYER_NODES']
+            INPUT_NODES = data['INPUT_NODES']
+            OUTPUT_NODES = data['OUTPUT_NODES']
+
+    res = network_controller.simulate_program(filenames,3,False,filename,HIDDEN_LAYERS, INPUT_NODES, HIDDEN_LAYERNODES, OUTPUT_NODES)
     label1 = Label(root,text='Resultat: '+res).grid(column=0,row=1,sticky=W)
     print(res)
     
