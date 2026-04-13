@@ -165,21 +165,27 @@ class network:
         batch_size = len(softmax_output)
         layer_count = len(self.hidden_layers) + 1
 
+
+        # bruger list comprehension til at skabe listen til gradientsene
         dW = [None for _ in range(layer_count)]
         dB = [None for _ in range(layer_count)]
 
-        # ---------- output layer ----------
+        # ---------- output lag ----------
+        # starter med det sidste lag
         output_delta = []
         for sample_index in range(batch_size):
             probs = softmax_output[sample_index][:]
             probs[skalar[sample_index]] -= 1
             output_delta.append(probs)
 
+        # tildeler den tidligere error loss baseret på mængden af hidden layers 
         if len(self.hidden_layers) > 0:
             prev_activation = self.layer_results_RELU[-1]
         else:
             prev_activation = self.output_layer[0].layer_inputs
 
+
+        # Regner gradientsene ved at gange dem med deres respektive inputs
         output_weight_grad = []
         for input_index in range(len(prev_activation[0])):
             row = []
@@ -190,6 +196,8 @@ class network:
                 row.append(s / batch_size)
             output_weight_grad.append(row)
 
+
+        # finder bias gradientene med samme metode
         output_bias_grad = []
         bias_row = []
         for output_node_index in range(len(output_delta[0])):
@@ -199,12 +207,15 @@ class network:
             bias_row.append(s / batch_size)
         output_bias_grad.append(bias_row)
 
+        # tilføjer den til de tidligere skabte lister
         dW[layer_count - 1] = output_weight_grad
         dB[layer_count - 1] = output_bias_grad
 
-        # ---------- backprop through hidden layers ----------
+        # Går igennem alle hidden layers
+        # De tidligere gradients var kun for output laget
         next_delta = output_delta
 
+        # Går fra input mod output
         if len(self.hidden_layers) > 0:
             next_weights = self.output_layer[0].weights
 
@@ -219,17 +230,16 @@ class network:
                         s = 0
                         for next_node_index in range(len(next_delta[0])):
                             s += next_delta[sample_index][next_node_index] * next_weights[node_index][next_node_index]
-
                         relu_grad = 1 if self.layer_results_RELU[hidden_index][sample_index][node_index] > 0 else 0
                         sample_delta.append(s * relu_grad)
 
                     current_delta.append(sample_delta)
-
+                # Bestemmer hvilke error loss der bruges
                 if hidden_index == 0:
                     prev_activation = current_layer.layer_inputs
                 else:
                     prev_activation = self.layer_results_RELU[hidden_index - 1]
-
+                # Kører det sidste lag
                 weight_grad = []
                 for input_index in range(len(prev_activation[0])):
                     row = []
@@ -300,6 +310,8 @@ class network:
 
 
         self.init_adam()
+        self.loss_graph_data = []
+        self.acc_graph_data = []
 
         for itera in range(iterations):
             ent_acc = []
@@ -309,13 +321,18 @@ class network:
                 w, b = self.batch_gradient(self.softmax_result, skalar2)
                 self.adam_step(w, b)
                 ent_acc.append(self.accuracy)
+                self.loss_graph_data.append(self.loss)
+                self.acc_graph_data.append(self.accuracy)
 
             self.forward_propagationnp(inputs2, skalar2)
             print("---------------------  " + str((itera + 1) * 100) + "  ---------------------")
             print("New loss: " + str(self.loss))
             print("Accuracy of the model: "+str(sum(ent_acc)/len(ent_acc)))
             self.model_accuracy = sum(ent_acc)/len(ent_acc)
-
+        plt.plot(list(range(len(self.loss_graph_data))), self.loss_graph_data, label = "Loss curve")
+        plt.plot(list(range(len(self.loss_graph_data))), self.acc_graph_data, label = "Accuracy curve")
+        plt.legend()
+        plt.show()
 
     def temp(self,inputs):
         for x in self.hidden_layers:
@@ -399,7 +416,7 @@ def train_init(folder, HIDDEN_LAYERS, INPUT_NODES, HIDDEN_LAYERNODES, OUTPUT_NOD
     first_batch, first_prediction = gather_input(folder,1,class_range)
     the_network.forward_propagationnp(first_batch,first_prediction)
     the_network.adam_optimization(batch_amt, epoch_amt, class_range, batch_size)
-    the_network.save_network()
+    #the_network.save_network()
 
     print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
