@@ -2,9 +2,6 @@ from tkinter import *
 from tkinter import ttk
 import tkinter as tk
 from tkinter import filedialog as fd
-import math
-import time
-import json
 import network_controller
 
 
@@ -54,7 +51,7 @@ def trainer():
 
 json_button = ttk.Button(
     root,
-    text='Indlæs JSON fil',
+    text='Indlæs datasæt mappe',
     command=select_json
 ).grid(column=0,row=0,sticky=W)
 

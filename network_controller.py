@@ -1,8 +1,8 @@
 # De nødvendige bibloteker bliver importeret her.
 import numpy as np # Til matematik
 import sys # Systemet
-from PIL import Image
-from pathlib import Path
+from PIL import Image # Til at indlæse billedet
+from pathlib import Path # Til fil-paths
 import matplotlib
 import matplotlib.pyplot as plt # Til grafer
 import random # Til weights og bias
